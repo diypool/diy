@@ -213,7 +213,7 @@ install.
 
     topology = [
       {
-        addr = "<BP_IP>"
+        addr = "<BP_IP>";
         port = <BP_CARDANO_NODE_PORT>;
         valency = 1;
       }
@@ -221,7 +221,7 @@ install.
       # Make sure to pick a few that are geographically close to your relay
       # Then pick nodes from a variety of geographic locations
       {
-        addr = "<IP_OR_DOMAIN>"
+        addr = "<IP_OR_DOMAIN>";
         port = <PORT>;
         valency = 1;
       }
@@ -258,9 +258,9 @@ services.stake-pool = {
     port = <BP_CARDANO_NODE_PORT>;
     tracePort = 8000;
 
-    kesKey = "/todo/kes.skey"
-    vrfKey = "/todo/vrf.skey"
-    operationalCertificate = "/todo/node.cert"
+    kesKey = "/todo/kes.skey";
+    vrfKey = "/todo/vrf.skey";
+    operationalCertificate = "/todo/node.cert";
   };
 
   cardano-rt-view = {
