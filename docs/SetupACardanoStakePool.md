@@ -70,7 +70,7 @@ Endpoint = <BP_IP>:<BP_WG_PORT>
 PersistentKeepalive = 21
 ```
 
-Next ddit `~/.ssh/config` and add the following lines so you can easily log in to block producer and
+Next edit `~/.ssh/config` and add the following lines so you can easily log in to block producer and
 relay nodes from your local machine
 
 ```config
@@ -94,13 +94,13 @@ are perfect for operating a stake pool
 
 * *Declarative*
 * *Reliability*
-* *Reprodicibility*
+* *Reproducibility*
 
 With NixOS we only have to edit a single file to make changes to our system making it *declarative*.
 It is *reliable* because we can painlessly upgrade and roll back packages without breaking other
 packages. We can also *reproduce* releases of
-[input-output-hk/cardano-node](https://github.com/input-output-hk/cardano-node) guaranteeing same
-build across machines.
+[input-output-hk/cardano-node](https://github.com/input-output-hk/cardano-node) guaranteeing the
+same build across machines
 
 First, install NixOS on your relay hardware. Please read NixOS
 [documentation](https://nixos.org/manual/nixos/stable/#sec-installation) for more detailed steps.
@@ -127,7 +127,7 @@ Now become root `sudo su` and partition and format your drive to install the ope
 doing the following:
 
 * Create *MBR* partition table
-* Create *root* partition that fills the disk except for the last 16 GB
+* Create the *root* partition that fills the disk except for the last 16 GB
 * Create the *swap* partition using the last 16 GB
 * Format the partitions
 ```sh
@@ -163,6 +163,28 @@ install.
 ```nix
 { config, pkgs, lib, ... }:
 
+let
+  diySrc = builtins.fetchTarball {
+    url = "https://github.com/diypool/diy/archive/refs/tags/v0.0.0.tar.gz";
+    sha256 = "1sdvvrg216z5gxq2pl1pzd377fp2fgb4rw57l6rs3bzgzy276hgg";
+  };
+
+  diy = import "${diySrc}/nix/nixos/diy.nix" {
+    config = config;
+    pkgs = pkgs;
+    lib = lib;
+
+    cardano-node-src = {
+      url = "https://github.com/input-output-hk/cardano-node/archive/refs/tags/1.26.2.tar.gz";
+      hash = "17zr2lhnrly6gqb1hxf3cjwfw1iz8s85hhhdiivb5ax7fkrrp8pp";
+    };
+    cardano-rt-view-src = {
+      url = "https://github.com/input-output-hk/cardano-rt-view/archive/0.3.0.tar.gz";
+      hash = "0m6na9gm0yvkg8z9w8f2i2isd05n2p0ha5y1j1gmciwr5srx4r60";
+    };
+  };
+in
+
 {
   nix.binaryCaches = [
     "https://hydra.iohk.io"
@@ -175,20 +197,7 @@ install.
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      (import ./diy.nix {
-        config = config;
-        pkgs = pkgs;
-        lib = lib;
-
-        cardano-node-src = {
-          url = "https://github.com/input-output-hk/cardano-node/archive/refs/tags/1.26.2.tar.gz";
-          hash = "17zr2lhnrly6gqb1hxf3cjwfw1iz8s85hhhdiivb5ax7fkrrp8pp";
-        };
-        cardano-rt-view-src = {
-          url = "https://github.com/input-output-hk/cardano-rt-view/archive/0.3.0.tar.gz";
-          hash = "0m6na9gm0yvkg8z9w8f2i2isd05n2p0ha5y1j1gmciwr5srx4r60";
-        };
-      })
+      diy
     ];
 
   boot.loader.grub.device = "/dev/vda";
@@ -213,7 +222,7 @@ install.
 
     topology = [
       {
-        addr = "<BP_IP>"
+        addr = "<BP_IP>";
         port = <BP_CARDANO_NODE_PORT>;
         valency = 1;
       }
@@ -221,7 +230,7 @@ install.
       # Make sure to pick a few that are geographically close to your relay
       # Then pick nodes from a variety of geographic locations
       {
-        addr = "<IP_OR_DOMAIN>"
+        addr = "<IP_OR_DOMAIN>";
         port = <PORT>;
         valency = 1;
       }
@@ -258,9 +267,9 @@ services.stake-pool = {
     port = <BP_CARDANO_NODE_PORT>;
     tracePort = 8000;
 
-    kesKey = "/todo/kes.skey"
-    vrfKey = "/todo/vrf.skey"
-    operationalCertificate = "/todo/node.cert"
+    kesKey = "/todo/kes.skey";
+    vrfKey = "/todo/vrf.skey";
+    operationalCertificate = "/todo/node.cert";
   };
 
   cardano-rt-view = {
