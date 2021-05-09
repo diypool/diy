@@ -1,6 +1,6 @@
 # Stake pool guide
 This document is a step-by-step guide to set up your own Cardano stake pool. By the end of the
-document, you should have a brand new stake pool that's ready to forge blocks. If you run into
+document, you should have a brand new stake pool that's ready to mint blocks. If you run into
 issues or have suggestions, please raise an [issue]() or create a [pull request]() on the GitHub
 page.
 
