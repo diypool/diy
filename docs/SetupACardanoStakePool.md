@@ -154,8 +154,9 @@ cd /mnt/keys/wg
 nix-shell -p wireguard --run 'wg genkey | tee privatekey | wg pubkey > publickey'
 ```
 
-For the relay, substitute `<RELAY_WG_PUBLIC_KEY>` value with contents of `/mnt/keys/wg/publickey`.
-For the block producer do the same except replace `<BP_WG_PUBLIC_KEY>`.
+For the relay, substitute `<RELAY_WG_PUBLIC_KEY>` value (in your local wireguard configuration file)
+with contents of `/mnt/keys/wg/publickey`. For the block producer do the same except replace
+`<BP_WG_PUBLIC_KEY>`.
 
 Edit `/mnt/etc/nixos/configuration.nix` to look like the following. *Do not* enable cardano-node
 just yet. Enabling it at this step will cause the installation to fail. Set it to true after the
@@ -164,6 +165,7 @@ install.
 { config, pkgs, lib, ... }:
 
 let
+
   diySrc = builtins.fetchTarball {
     url = "https://github.com/diypool/diy/archive/refs/tags/v0.0.0.tar.gz";
     sha256 = "1sdvvrg216z5gxq2pl1pzd377fp2fgb4rw57l6rs3bzgzy276hgg";
@@ -175,14 +177,15 @@ let
     lib = lib;
 
     cardano-node-src = {
-      url = "https://github.com/input-output-hk/cardano-node/archive/refs/tags/1.26.2.tar.gz";
-      hash = "17zr2lhnrly6gqb1hxf3cjwfw1iz8s85hhhdiivb5ax7fkrrp8pp";
+      url = "https://github.com/input-output-hk/cardano-node/archive/refs/tags/1.27.0.tar.gz";
+      hash = "1c9zc899wlgicrs49i33l0bwb554acsavzh1vcyhnxmpm0dmy8vj";
     };
     cardano-rt-view-src = {
       url = "https://github.com/input-output-hk/cardano-rt-view/archive/0.3.0.tar.gz";
       hash = "0m6na9gm0yvkg8z9w8f2i2isd05n2p0ha5y1j1gmciwr5srx4r60";
     };
   };
+
 in
 
 {
@@ -313,6 +316,8 @@ cardano-node is not running yet. After editing the file, while being root, rebui
 download and install
 [input-output-hk/cardano-node](https://github.com/input-output-hk/cardano-node). This may take up to
 30 minutes. 
+
+
 ```sh
 ssh relay
 su
@@ -324,9 +329,13 @@ services.stake-pool {
     enable = true;
   };
 };
-
+nix-env -iA nixos.git # See Note
 nixos-rebuild switch
 ```
+
+Note that in cardano-node 1.27.0, IOHK started using `fetchGit` in their nix configuration.
+Apparently, this requires `git` binary to be installed to work properly. See this
+[issue](https://github.com/NixOS/nixpkgs/issues/46603) on NixOS for more info.
 
 Now you should have cardano-node process running on the relay node. You can manage cardano-node
 process using system control commands:
