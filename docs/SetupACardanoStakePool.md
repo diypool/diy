@@ -333,7 +333,7 @@ nix-env -iA nixos.git # See Note
 nixos-rebuild switch
 ```
 
-Note that in cardano-node 1.27.0, IOHK started using `fetchGit` in their nix configuration.
+Note that in cardano-node 1.27.0, IOG started using `fetchGit` in their nix configuration.
 Apparently, this requires `git` binary to be installed to work properly. See this
 [issue](https://github.com/NixOS/nixpkgs/issues/46603) on NixOS for more info.
 
@@ -360,8 +360,8 @@ just change the values of `src` and `hash` values in the imports section. You ca
 hash by running the following command
 
 ```sh
-nix-prefetch-url --unpack https://github.com/input-output-hk/cardano-node/archive/refs/tags/1.26.2.tar.gz
-17zr2lhnrly6gqb1hxf3cjwfw1iz8s85hhhdiivb5ax7fkrrp8pp
+nix-prefetch-url --unpack https://github.com/input-output-hk/cardano-node/archive/refs/tags/1.27.0.tar.gz
+1c9zc899wlgicrs49i33l0bwb554acsavzh1vcyhnxmpm0dmy8vj
 ```
 
 ### Create Keys & Certs
@@ -369,3 +369,43 @@ nix-prefetch-url --unpack https://github.com/input-output-hk/cardano-node/archiv
 This section is still being worked on. Please see Cardano doc [Creating keys and operational
 certificates](https://docs.cardano.org/en/latest/getting-started/stake-pool-operators/creating-keys-and-operational-certificates.html)
 for now
+
+### Update KES and Certs
+Key Evolving Signature (KES), is a mechanism used by Cardano to prove that you still control the
+cold keys. Each 90 day period you must generate a new KES key pair and a new node certificate using
+your cold keys. Note that 90 days is the maximum period. You can generate new KES keys and node
+certificate anytime within this period.
+
+To generate new KES keys and node certificate, first figire out the KES period. This is done using
+the genesis file and by querying current slot of the tip of the blockchain. Replace `KES_PERIOD`
+below with output of this command
+
+```sh
+ expr $(cardano-cli query tip --mainnet | nix-shell -p jq --run 'jq .slot') / $(nix-shell -p curl jq --run 'curl -s https://hydra.iohk.io/build/6198010/download/1/mainnet-shelley-genesis.json | jq .slotsPerKESPeriod')
+```
+
+Next, generate a new KES key pair from your cold environment
+
+```sh
+cardano-cli node key-gen-KES \
+  --verification-key-file kes.vkey \
+  --signing-key-file kes.skey
+```
+
+Next, use your cold signing key and cold operational certificate issue counter along with the
+generated KES key to produce your new node certificate
+
+```sh
+cardano-cli node issue-op-cert \
+  --kes-verification-key-file kes.vkey \
+  --cold-signing-key-file cold.skey \
+  --operational-certificate-issue-counter cold.counter \
+  --kes-period <KES_PERIOD> \
+  --out-file node.cert
+```
+
+Next, safely copy the KES keys and node certificate on to your block producer node and replace the old KES keys and node certificate. Finally, restart cardano-node
+
+```sh
+systemctl restart cardano-node.service
+```
