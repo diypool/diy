@@ -344,7 +344,7 @@ process using system control commands:
 
 * View status `systemctl status cardano-node.service`
 * Follow logs `journalctl -u cardano-node.service -f`
-* Stop process `systemctl stop cardano-node-.service`
+* Stop process `systemctl stop cardano-node.service`
 * Restart process `systemctl restart cardano-node.service`
 
 To view the application-specific state of cardano-node, navigate to
