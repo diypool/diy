@@ -123,7 +123,7 @@ ssh nixos@<RELAY_IP>
 ```
 
 
-Now become root `sudo su` and partition and format your drive to install the operating system by
+Now become the root `sudo su` and partition and format your drive to install the operating system by
 doing the following:
 
 * Create *MBR* partition table
@@ -301,8 +301,8 @@ these to real paths later. Just like before, set `cardano-node.enable = false` f
 
 ### Managing System
 You should now have NixOS installed on the hardware. Now connect to the wireguard network and login
-to the relay. You will be logged in as the `relay` user. Become root user and set a password for the
-`relay` user. Repeat these steps for the block producer node too
+to the relay. You will be logged in as the `relay` user. Become the root user and set a password for
+the `relay` user. Repeat these steps for the block producer node too
 
 ```sh
 ssh relay
@@ -310,7 +310,7 @@ su              # Enter root password
 passwd relay    # Enter a new password for the relay user
 ```
 
-Login to the relay node and become root. Then enable cardano node by editing configuration.nix.
+Login to the relay node and become root. Then enable cardano-node by editing configuration.nix.
 Temporarily remove your block producer address from the topology section since the block producer
 cardano-node is not running yet. After editing the file, while being root, rebuild nixos. This will
 download and install
@@ -373,18 +373,18 @@ for now
 ### Updating KES and Certs
 Key Evolving Signature (KES), is a mechanism used by Cardano to prove that you still control the
 cold keys. Each 90 day period you must generate a new KES key pair and a new node certificate using
-your cold keys. Note that 90 days is the maximum period. You can generate new KES keys and node
-certificate anytime within this period.
+your cold keys. Note that 90 days is the maximum period. You can generate new keys and a certificate
+anytime within this period.
 
-To generate new KES keys and node certificate, first figire out the KES period. This is done using
-the genesis file and by querying current slot of the tip of the blockchain. Replace `<KES_PERIOD>`
-below with output of this command
+To generate new KES keys and a node certificate, first, figure out the KES period. This is done
+using the genesis file and by querying the current slot of the tip of the blockchain. Replace
+`<KES_PERIOD>` below with output of this command
 
 ```sh
  expr $(cardano-cli query tip --mainnet | nix-shell -p jq --run 'jq .slot') / $(nix-shell -p curl jq --run 'curl -s https://hydra.iohk.io/build/6198010/download/1/mainnet-shelley-genesis.json | jq .slotsPerKESPeriod')
 ```
 
-Next, generate a new KES key pair from your cold environment
+Next, generate a new KES key pair
 
 ```sh
 cardano-cli node key-gen-KES \
@@ -393,7 +393,7 @@ cardano-cli node key-gen-KES \
 ```
 
 Next, use your cold signing key and cold operational certificate issue counter along with the
-generated KES key to produce your new node certificate
+generated KES key to generate your new node certificate
 
 ```sh
 cardano-cli node issue-op-cert \
@@ -404,19 +404,19 @@ cardano-cli node issue-op-cert \
   --out-file node.cert
 ```
 
-Next, safely copy the KES keys and node certificate on to your block producer node and replace the old KES keys and node certificate. Finally, restart cardano-node
+Next, safely copy the KES keys and node certificate onto your block producer node and replace the old KES keys and node certificate. Finally, restart cardano-node
 
 ```sh
 systemctl restart cardano-node.service
 ```
 
-### Re-Register Pool 
-To update pool fees, margin, metadata, relays  etc, you need to re-register the pool with an updated
+### Update Pool Parameters
+To update pool fees, margin, metadata, relays, etc, you need to re-register the pool with an updated
 pool registration certificate. You do not have to pay the original ₳500 deposit again. Although, you
 will have to pay the transaction fee of ~₳0.2. Following are the steps to register the pool with a
 new pool registration certificate
 
-First, calcualte the hash of `pool-metadata.json`. You must ensure the pool metadata json file is
+First, calculate the hash of `pool-metadata.json`. You must ensure the pool metadata JSON file is
 unchanged after this since the hashes will differ. Replace `<POOL_METADATA_HASH>` below with the
 output of this command 
 
@@ -425,8 +425,8 @@ cardano-cli stake-pool metadata-hash --pool-metadata-file pool-metadata.json
 ```
 
 Next, generate the new pool registration certificate using your cold keys. Note that in this
-example, rewards account and owner stake key is the same. Also, a DNS name is used instead of an
-IPV4 address for the realy. Replace relay domain and metadata url with your own value.
+example, the rewards account and owner stake key are the same. Also, a DNS name is used instead of
+an IPV4 address for the relay. Replace relay domain and metadata URL with your value.
 `<POOL_MARGIN>` is a decimal value between 0 and 1.0.
 
 ```sh
@@ -446,28 +446,7 @@ cardano-cli stake-pool registration-certificate \
   --out-file pool-registration.cert
 ```
 
-Here is an example used by DIY pool to reduce pool margin from 5% to 0%, change pool-metadata.json
-file location, and add [adapools.org](https://adapools.org) `"extended"` field to pool-metadata.json
-file.
-
-```sh
-cardano-cli stake-pool registration-certificate \
-  --cold-verification-key-file cold.vkey \
-  --vrf-verification-key-file vrf.vkey \
-  --pool-pledge 1000000000 \
-  --pool-cost 340000000 \
-  --pool-margin 0.000 \
-  --pool-reward-account-verification-key-file stake.vkey \
-  --pool-owner-stake-verification-key-file stake.vkey \
-  --mainnet \
-  --single-host-pool-relay relay.diypool.dev \
-  --pool-relay-port 3001 \
-  --metadata-url https://diypool.dev/.well-known/pool-metadata.json \
-  --metadata-hash bde131c02fb5ac8c591c645fb75497a628acfdbd2a413c11c81ea63cc813a6e0 \
-  --out-file pool-registration.cert
-```
-
-Next, build a transaction draft using delegation certificate and your new pool registration
+Next, build a transaction draft using the delegation certificate and your new pool registration
 certificate
 
 ```sh
@@ -526,7 +505,7 @@ cardano-cli transaction sign \
   --out-file tx.signed
 ```
 
-Finally, copy the signed transaction to your hot environment and submit it to the block chain
+Finally, copy the signed transaction to your hot environment and submit it to the blockchain
 
 ```sh
 cardano-cli transaction submit \
@@ -534,8 +513,8 @@ cardano-cli transaction submit \
   --mainnet
 ```
 
-You can now verify weather pool registration was successful by running the following commands.
-Replace `<POOL_ID>` with the output of this command below 
+Verify whether pool registration was successful by running the following commands. First, find the pool id by running this from your cold environment. Replace `<POOL_ID>` with the output of
+this command
 
 ```sh
 cardano-cli stake-pool id 
