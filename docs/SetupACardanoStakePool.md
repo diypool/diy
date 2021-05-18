@@ -9,6 +9,8 @@ or have suggestions, please raise an [issue](https://github.com/diypool/diy/issu
 * Install NixOS
 * Managing System
 * Create Keys & Certs
+* Updating KES & Certs
+* Updating Pool Parameters
 
 ### Hardware & Network
 Current hardware and network requirements for operating a stake pool are the following: 
@@ -370,7 +372,7 @@ This section is still being worked on. Please see Cardano doc [Creating keys and
 certificates](https://docs.cardano.org/en/latest/getting-started/stake-pool-operators/creating-keys-and-operational-certificates.html)
 for now
 
-### Updating KES and Certs
+### Updating KES & Certs
 Key Evolving Signature (KES), is a mechanism used by Cardano to prove that you still control the
 cold keys. Each 90 day period you must generate a new KES key pair and a new node certificate using
 your cold keys. Note that 90 days is the maximum period. You can generate new keys and a certificate
