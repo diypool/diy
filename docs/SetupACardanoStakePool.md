@@ -169,8 +169,8 @@ install.
 let
 
   diySrc = builtins.fetchTarball {
-    url = "https://github.com/diypool/diy/archive/refs/tags/v0.0.0.tar.gz";
-    sha256 = "1sdvvrg216z5gxq2pl1pzd377fp2fgb4rw57l6rs3bzgzy276hgg";
+    url = "https://github.com/diypool/diy/archive/refs/tags/v0.0.1.tar.gz";
+    sha256 = "1aisjrd1zrmyx5bzbhig6bxzzl25ar6ksfvpixlsk7ibag3p24sa";
   };
 
   diy = import "${diySrc}/nix/nixos/diy.nix" {
