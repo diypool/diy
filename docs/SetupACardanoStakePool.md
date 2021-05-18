@@ -1,8 +1,8 @@
 # Stake pool guide
 This document is a step-by-step guide to set up your own Cardano stake pool. By the end of the
-document, you should have a brand new stake pool that's ready to mint blocks. If you run into
-issues or have suggestions, please raise an [issue]() or create a [pull request]() on the GitHub
-page.
+document, you should have a brand new stake pool that's ready to mint blocks. If you run into issues
+or have suggestions, please raise an [issue](https://github.com/diypool/diy/issues) or create a
+[pull request](https://github.com/diypool/diy) on the GitHub page.
 
 * Hardware & Network
 * Setup WireGuard & SSH
@@ -370,14 +370,14 @@ This section is still being worked on. Please see Cardano doc [Creating keys and
 certificates](https://docs.cardano.org/en/latest/getting-started/stake-pool-operators/creating-keys-and-operational-certificates.html)
 for now
 
-### Update KES and Certs
+### Updating KES and Certs
 Key Evolving Signature (KES), is a mechanism used by Cardano to prove that you still control the
 cold keys. Each 90 day period you must generate a new KES key pair and a new node certificate using
 your cold keys. Note that 90 days is the maximum period. You can generate new KES keys and node
 certificate anytime within this period.
 
 To generate new KES keys and node certificate, first figire out the KES period. This is done using
-the genesis file and by querying current slot of the tip of the blockchain. Replace `KES_PERIOD`
+the genesis file and by querying current slot of the tip of the blockchain. Replace `<KES_PERIOD>`
 below with output of this command
 
 ```sh
@@ -408,4 +408,146 @@ Next, safely copy the KES keys and node certificate on to your block producer no
 
 ```sh
 systemctl restart cardano-node.service
+```
+
+### Re-Register Pool 
+To update pool fees, margin, metadata, relays  etc, you need to re-register the pool with an updated
+pool registration certificate. You do not have to pay the original ₳500 deposit again. Although, you
+will have to pay the transaction fee of ~₳0.2. Following are the steps to register the pool with a
+new pool registration certificate
+
+First, calcualte the hash of `pool-metadata.json`. You must ensure the pool metadata json file is
+unchanged after this since the hashes will differ. Replace `<POOL_METADATA_HASH>` below with the
+output of this command 
+
+```sh
+cardano-cli stake-pool metadata-hash --pool-metadata-file pool-metadata.json
+```
+
+Next, generate the new pool registration certificate using your cold keys. Note that in this
+example, rewards account and owner stake key is the same. Also, a DNS name is used instead of an
+IPV4 address for the realy. Replace relay domain and metadata url with your own value.
+`<POOL_MARGIN>` is a decimal value between 0 and 1.0.
+
+```sh
+cardano-cli stake-pool registration-certificate \
+  --cold-verification-key-file <PATH_TO_COLD_VKEY> \
+  --vrf-verification-key-file <PATH_TO_VRF_VKEY> \
+  --pool-pledge <PLEDGE_AMOUNT_LOVELACE> \
+  --pool-cost <POOL_COST_LOVELACE> \
+  --pool-margin <POOL_MARGIN> \
+  --pool-reward-account-verification-key-file <PATH_TO_STAKE_VKEY> \
+  --pool-owner-stake-verification-key-file <PATH_TO_STAKE_VKEY> \
+  --mainnet \
+  --single-host-pool-relay <RELAY_DOMAIN> \
+  --pool-relay-port <RELAY_PORT> \
+  --metadata-url <POOL_METADATA_URL> \
+  --metadata-hash <POOL_METADATA_HASH> \
+  --out-file pool-registration.cert
+```
+
+Here is an example used by DIY pool to reduce pool margin from 5% to 0%, change pool-metadata.json
+file location, and add [adapools.org](https://adapools.org) `"extended"` field to pool-metadata.json
+file.
+
+```sh
+cardano-cli stake-pool registration-certificate \
+  --cold-verification-key-file cold.vkey \
+  --vrf-verification-key-file vrf.vkey \
+  --pool-pledge 1000000000 \
+  --pool-cost 340000000 \
+  --pool-margin 0.000 \
+  --pool-reward-account-verification-key-file stake.vkey \
+  --pool-owner-stake-verification-key-file stake.vkey \
+  --mainnet \
+  --single-host-pool-relay relay.diypool.dev \
+  --pool-relay-port 3001 \
+  --metadata-url https://diypool.dev/.well-known/pool-metadata.json \
+  --metadata-hash bde131c02fb5ac8c591c645fb75497a628acfdbd2a413c11c81ea63cc813a6e0 \
+  --out-file pool-registration.cert
+```
+
+Next, build a transaction draft using delegation certificate and your new pool registration
+certificate
+
+```sh
+cardano-cli transaction build-raw \
+  --tx-in <TxHash>#<TxIx> \
+  --tx-out $(cat payment.addr)+0 \
+  --invalid-hereafter 0 \
+  --fee 0 \
+  --out-file tx.draft \
+  --certificate-file pool-registration.cert \
+  --certificate-file delegation.cert
+```
+
+Next, calculate the fees. Replace `<TRANSACTION_FEE>` with the output of this command below
+
+```sh
+cardano-cli transaction calculate-min-fee \
+  --tx-body-file tx.draft \
+  --tx-in-count 1 \
+  --tx-out-count 1 \
+  --witness-count 3 \
+  --byron-witness-count 0 \
+  --mainnet \
+  --protocol-params-file protocol.json
+```
+
+Next, calculate the change for `--tx-out` parameter. Replace `<CHANGE_IN_LOVELACE>` with the output
+of this command below
+
+```sh
+expr <UTxO_BALANCE> - <TRANSACTION_FEE>
+```
+
+Next, build the transaction
+
+```sh
+cardano-cli transaction build-raw \
+  --tx-in <TxHash>#<TxIx> \
+  --tx-out $(cat payment.addr)+<CHANGE_IN_LOVELACE> \
+  --invalid-hereafter <TTL> \
+  --fee <TRANSACTION_FEE> \
+  --out-file tx.raw \
+  --certificate-file pool-registration.cert \
+  --certificate-file delegation.cert
+```
+
+Next, sign the transaction
+
+```sh
+cardano-cli transaction sign \
+  --tx-body-file tx.raw \
+  --signing-key-file payment.skey \
+  --signing-key-file stake.skey \
+  --signing-key-file cold.skey \
+  --mainnet \
+  --out-file tx.signed
+```
+
+Finally, copy the signed transaction to your hot environment and submit it to the block chain
+
+```sh
+cardano-cli transaction submit \
+  --tx-file tx.signed \
+  --mainnet
+```
+
+You can now verify weather pool registration was successful by running the following commands.
+Replace `<POOL_ID>` with the output of this command below 
+
+```sh
+cardano-cli stake-pool id 
+  --cold-verification-key-file cold.vkey \
+  --output-format "hex"
+```
+
+Check for pool params in the ledger. Your changes should be reflected in the `"futurePoolParams"`
+section
+
+```sh
+cardano-cli query pool-params \
+  --stake-pool-id <POOL_ID> \
+  --mainnet
 ```
